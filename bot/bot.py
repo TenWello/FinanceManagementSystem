@@ -1229,15 +1229,16 @@ async def handle_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     role = await guard(update)
     if not role: return ConversationHandler.END
     if not can_add_tx(role):
-        await update.message.reply_text("❌ Sizda kirim/chiqim qo'shish huquqi yo'q.")
+        await update.message.reply_text("❌ Sizda kirim/chiqim qo\'shish huquqi yo\'q.")
         return ST_MENU
 
     uid  = update.effective_user.id
     user = update.effective_user
 
-    # 1. Avval transcription sinab ko'ramiz
+    msg = await update.message.reply_text("🎙 Ovoz qabul qilindi, tahlil qilinmoqda...")
+
+    # Transcription sinash
     transcribed = ""
-    msg = await update.message.reply_text("🎙 Eshitilyapti...")
     try:
         voice = update.message.voice
         tg_file = await ctx.bot.get_file(voice.file_id)
@@ -1249,38 +1250,25 @@ async def handle_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         try: _os.unlink(tmp_path)
         except: pass
     except Exception as e:
-        log.warning(f"Voice download/transcribe error: {e}")
-        transcribed = ""
+        log.warning(f"Voice error: {e}")
 
-    # 2. Transcription muvaffaqiyatli bo'lsa — to'g'ridan ishlov beramiz
+    # Transcription muvaffaqiyatli
     if transcribed:
         await msg.edit_text(f"🎙 Eshitildi: _{transcribed}_", parse_mode="Markdown")
         result = await detect_intent_and_process(update.message, ctx, transcribed, role, uid, user)
         if result is not None:
             return result
-        await update.message.reply_text(
-            "🤔 Nima nazarda tutdingiz? Biroz aniqroq yozing:\n\n"
-            "• `500 ming so'm tushdi` — kirim\n"
-            "• `Ijara 2 mln to'ladik` — chiqim\n"
-            "• `Oylik hisobot` — hisobot",
-            parse_mode="Markdown",
-            reply_markup=main_menu_ikb(role))
-        return ST_MENU
 
-    # 3. Transcription ishlamasa — foydalanuvchi o'zi yozsin
-    ctx.user_data[VOICE_WAITING_TEXT] = True
+    # Transcription ishlamadi yoki tushunilmadi — kirim/chiqim tugmalar ko'rsat
     await msg.edit_text(
         "🎙 Ovoz qabul qilindi!\n\n"
-        "Nima degan edingiz? Yozing — men ishlov beraman:\n\n"
-        "_Misol:_\n"
-        "• `500 ming so'm tushdi`\n"
-        "• `Ijara 2 mln to'ladik`\n"
-        "• `Oylik hisobot`,",
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup([[
-            InlineKeyboardButton("❌ Bekor", callback_data="cancel")
-        ]]))
-    return ST_AMOUNT  # matn kutish holatiga o'tadi
+        "Kirim yoki chiqim?",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("💰 Kirim", callback_data="add_income"),
+             InlineKeyboardButton("💸 Chiqim", callback_data="add_expense")],
+            [InlineKeyboardButton("❌ Bekor", callback_data="cancel")],
+        ]))
+    return ST_MENU
 
 async def voice_text_fallback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """Voice yuborilgandan keyin foydalanuvchi matn yozsa"""

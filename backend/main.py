@@ -458,6 +458,4 @@ def setup_db_get():
     conn.close()
     return {"ok": True, "categories": cat_count, "db_path": DB_PATH}
 
-# ─── Dashboard ────────────────────────────────────────────────────────────────
-# Middleware orqali barcha brauzer so'rovlari dashboard.html ga yo'naltiriladi.
-# Qo'shimcha route kerak emas — middleware boshqaradi.
+
