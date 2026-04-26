@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Finance Manager</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+  .sidebar-link{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;color:#94a3b8}
+  .sidebar-link:hover{background:#1e293b;color:#fff}
+  .sidebar-link.active{background:#4f46e5;color:#fff}
+  .card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #f1f5f9}
+  .btn{padding:8px 16px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
+  .btn-primary{background:#4f46e5;color:#fff} .btn-primary:hover{background:#4338ca}
+  .btn-danger{background:#fee2e2;color:#ef4444} .btn-danger:hover{background:#fecaca}
+  .btn-ghost{background:#f8fafc;color:#475569;border:1px solid #e2e8f0} .btn-ghost:hover{background:#f1f5f9}
+  input,select{border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;font-size:14px;width:100%;outline:none;transition:border .15s}
+  input:focus,select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;background:#f8fafc;border-bottom:1px solid #f1f5f9}
+  td{padding:12px 16px;font-size:13px;border-bottom:1px solid #f8fafc}
+  tr:hover td{background:#fafafa}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:500}
+  .badge-income{background:#ecfdf5;color:#059669} .badge-expense{background:#fef2f2;color:#dc2626}
+  .page{display:none} .page.active{display:block}
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);z-index:50;align-items:center;justify-content:center}
+  .modal.open{display:flex}
+  .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;z-index:100;transform:translateY(20px);opacity:0;transition:all .3s}
+  .toast.show{transform:translateY(0);opacity:1}
+  .spinner{width:20px;height:20px;border:2px solid #e2e8f0;border-top-color:#4f46e5;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+<!-- TOAST -->
+<!--<div id="toast" class="toast"></div>-->
+
+<!-- LOGIN -->
+<div id="login-page" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-slate-100">
+  <div class="card w-full max-w-md">
+    <div class="flex items-center gap-3 mb-8">
+      <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg">💰</div>
+      <div><h1 class="font-bold text-xl">Finance Manager</h1><p class="text-slate-400 text-sm">Kirish</p></div>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-600 mb-1">Telegram ID yoki "superadmin"</label>
+        <input id="login-user" type="text" placeholder="Telegram ID yoki Username" class="w-full">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-600 mb-1">Parol</label>
+        <input id="login-pass" type="password" placeholder=" ••••••••" class="w-full" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="login-err" class="text-red-500 text-sm hidden"></div>
+      <button onclick="doLogin()" class="btn btn-primary w-full py-2.5">Kirish</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="w-60 bg-slate-900 flex flex-col fixed inset-y-0 left-0 z-30">
+    <div class="p-5 border-b border-slate-700">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center text-white">💰</div>
+        <div><p class="font-bold text-white text-sm">Finance Manager</p><p class="text-slate-400 text-xs">Dashboard</p></div>
+      </div>
+    </div>
+    <nav class="flex-1 p-3 space-y-1">
+      <div class="sidebar-link active" onclick="goTo('overview')" id="nav-overview">
+        <span>📊</span><span>Bosh sahifa</span>
+      </div>
+      <div class="sidebar-link" onclick="goTo('transactions')" id="nav-transactions">
+        <span>↕️</span><span>Tranzaksiyalar</span>
+      </div>
+      <div class="sidebar-link nav-report" onclick="goTo('analytics')" id="nav-analytics">
+        <span>📈</span><span>Tahlil</span>
+      </div>
+      <div class="sidebar-link nav-manage" onclick="goTo('categories')" id="nav-categories">
+        <span>🏷️</span><span>Kategoriyalar</span>
+      </div>
+      <div class="sidebar-link nav-super" onclick="goTo('admins')" id="nav-admins" style="display:none">
+        <span>👥</span><span>Adminlar</span>
+      </div>
+    </nav>
+    <div class="p-4 border-t border-slate-700">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold" id="user-avatar">?</div>
+        <div><p class="text-white text-sm font-medium" id="user-name">...</p><p class="text-slate-400 text-xs" id="user-role">...</p></div>
+      </div>
+      <button onclick="doLogout()" class="w-full text-left text-slate-400 hover:text-red-400 text-xs transition-colors">← Chiqish</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="ml-60 flex-1 p-8">
+
+    <!-- OVERVIEW -->
+    <div id="page-overview" class="page active">
+      <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold">Bosh sahifa</h1><p class="text-slate-500 text-sm">Moliyaviy ko'rsatkichlar</p></div>
+        <div class="flex gap-1 bg-white border border-slate-200 rounded-xl p-1">
+          <button onclick="setPeriod('today')" id="p-today" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-600 hover:bg-slate-50">Bugun</button>
+          <button onclick="setPeriod('week')" id="p-week" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-600 hover:bg-slate-50">Hafta</button>
+          <button onclick="setPeriod('month')" id="p-month" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white">Oy</button>
+          <button onclick="setPeriod('year')" id="p-year" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-slate-600 hover:bg-slate-50">Yil</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-5 mb-6">
+        <div class="card"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white">💰</div><span id="inc-pct" class="text-xs font-medium px-2 py-1 rounded-full bg-emerald-50 text-emerald-600"></span></div><p class="text-2xl font-bold" id="stat-income">—</p><p class="text-slate-500 text-sm mt-1">Jami kirim</p><p class="text-slate-400 text-xs mt-1" id="prev-income"></p></div>
+        <div class="card"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white">💸</div><span id="exp-pct" class="text-xs font-medium px-2 py-1 rounded-full bg-red-50 text-red-500"></span></div><p class="text-2xl font-bold" id="stat-expense">—</p><p class="text-slate-500 text-sm mt-1">Jami chiqim</p><p class="text-slate-400 text-xs mt-1" id="prev-expense"></p></div>
+        <div class="card"><div class="flex items-start justify-between mb-3"><div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">📊</div></div><p class="text-2xl font-bold" id="stat-net">—</p><p class="text-slate-500 text-sm mt-1">Sof balans</p><p class="text-slate-400 text-xs mt-1" id="prev-net"></p></div>
+      </div>
+      <div class="grid grid-cols-3 gap-5 mb-6">
+        <div class="card col-span-2">
+          <h3 class="font-semibold mb-4">Kirim / Chiqim dinamikasi</h3>
+          <canvas id="chart-daily" height="180"></canvas>
+        </div>
+        <div class="card" id="quick-add-card">
+          <h3 class="font-semibold mb-4">Tez qo'shish</h3>
+          <div class="space-y-3">
+            <div class="flex gap-2 p-1 bg-slate-100 rounded-xl">
+              <button onclick="setQType('income')" id="q-income" class="flex-1 py-1.5 text-sm font-medium rounded-lg bg-emerald-500 text-white transition-all">💰 Kirim</button>
+              <button onclick="setQType('expense')" id="q-expense" class="flex-1 py-1.5 text-sm font-medium rounded-lg text-slate-600 transition-all">💸 Chiqim</button>
+            </div>
+            <input id="q-amount" type="number" placeholder="Summa (so'm)">
+            <select id="q-category"><option value="">Kategoriya...</option></select>
+            <input id="q-note" type="text" placeholder="Izoh (ixtiyoriy)">
+            <button onclick="quickAdd()" class="btn btn-primary w-full">✓ Saqlash</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="font-semibold mb-4">So'nggi tranzaksiyalar</h3>
+        <div id="recent-list"></div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div id="page-transactions" class="page">
+      <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold">Tranzaksiyalar</h1><p class="text-slate-500 text-sm">Barcha operatsiyalar</p></div>
+        <button onclick="openAddModal()" class="btn btn-primary nav-addtx hidden">+ Yangi</button>
+      </div>
+      <div class="card mb-5">
+        <div class="grid grid-cols-5 gap-3 mb-3">
+          <div class="col-span-2 relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+            <input id="f-search" type="text" placeholder="Qidirish..." class="pl-9" oninput="loadTxs()"></div>
+          <select id="f-type" onchange="loadTxs()"><option value="">Hammasi</option><option value="income">💰 Kirim</option><option value="expense">💸 Chiqim</option></select>
+          <select id="f-cat" onchange="loadTxs()"><option value="">Barcha kategoriya</option></select>
+          <select id="f-who" onchange="loadTxs()"><option value="">Barcha adminlar</option></select>
+        </div>
+        <div class="flex gap-3">
+          <input id="f-from" type="date" onchange="loadTxs()" class="flex-1">
+          <input id="f-to" type="date" onchange="loadTxs()" class="flex-1">
+          <button onclick="clearFilters()" class="btn btn-ghost">Tozalash</button>
+        </div>
+        <div id="tx-summary" class="mt-3 pt-3 border-t border-slate-50 text-sm text-slate-500 hidden"></div>
+      </div>
+      <div class="card overflow-hidden p-0">
+        <table>
+          <thead><tr>
+            <th>Tur</th><th>Summa</th><th>Kategoriya</th><th>Sana</th><th>Kim</th><th>Izoh</th><th></th>
+          </tr></thead>
+          <tbody id="tx-body"><tr><td colspan="7" class="text-center py-10 text-slate-400">Yuklanmoqda...</td></tr></tbody>
+        </table>
+        <div class="flex items-center justify-between px-5 py-3 border-t border-slate-50">
+          <span class="text-sm text-slate-500" id="tx-count">0 ta</span>
+          <div class="flex gap-2">
+            <button onclick="txPage(-1)" id="btn-prev" class="btn btn-ghost py-1.5 px-3">←</button>
+            <span class="text-sm text-slate-600 py-1.5 px-2" id="tx-page-lbl">1-sahifa</span>
+            <button onclick="txPage(1)" id="btn-next" class="btn btn-ghost py-1.5 px-3">→</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div id="page-analytics" class="page">
+      <h1 class="text-2xl font-bold mb-6">Tahlil</h1>
+      <div class="card mb-5"><h3 class="font-semibold mb-4">Oylik kirim vs chiqim (6 oy)</h3><canvas id="chart-monthly" height="120"></canvas></div>
+      <div class="grid grid-cols-2 gap-5">
+        <div class="card"><h3 class="font-semibold mb-4">Kirim kategoriyalari</h3><canvas id="chart-inc-pie" height="220"></canvas><div id="inc-legend" class="mt-4 space-y-1"></div></div>
+        <div class="card"><h3 class="font-semibold mb-4">Chiqim kategoriyalari</h3><canvas id="chart-exp-pie" height="220"></canvas><div id="exp-legend" class="mt-4 space-y-1"></div></div>
+      </div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div id="page-categories" class="page">
+      <h1 class="text-2xl font-bold mb-6">Kategoriyalar</h1>
+      <div class="grid grid-cols-3 gap-5">
+        <div class="card">
+          <h3 class="font-semibold mb-4">Yangi kategoriya</h3>
+          <div class="space-y-3">
+            <input id="c-name" type="text" placeholder="Nom">
+            <select id="c-type"><option value="expense">💸 Chiqim</option><option value="income">💰 Kirim</option><option value="both">🔄 Ikkalasi</option></select>
+            <div class="flex gap-2 flex-wrap" id="color-picker"></div>
+            <button onclick="addCategory()" class="btn btn-primary w-full">+ Qo'shish</button>
+          </div>
+        </div>
+        <div class="col-span-2 card p-0 overflow-hidden">
+          <table>
+            <thead><tr><th>Nom</th><th>Tur</th><th></th></tr></thead>
+            <tbody id="cat-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMINS (super_admin) -->
+    <div id="page-admins" class="page">
+      <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold">Adminlar boshqaruvi</h1><p class="text-slate-500 text-sm">Super admin paneli</p></div>
+        <button onclick="openAdminModal()" class="btn btn-primary">+ Yangi admin</button>
+      </div>
+      <div class="grid grid-cols-3 gap-5 mb-6" id="admin-stats-cards"></div>
+      <div class="card p-0 overflow-hidden">
+        <table>
+          <thead><tr><th>Ism</th><th>Telegram ID</th><th>Rol</th><th>Tranzaksiya</th><th>Oxirgi</th><th>Web parol</th><th></th></tr></thead>
+          <tbody id="admin-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- EDIT TX MODAL -->
+<div id="edit-modal" class="modal">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+    <div class="flex justify-between mb-5"><h3 class="font-bold text-lg">Tranzaksiyani tahrirlash</h3><button onclick="closeModal('edit-modal')" class="text-slate-400 hover:text-slate-600 text-xl">✕</button></div>
+    <div class="space-y-3">
+      <div class="flex gap-2 p-1 bg-slate-100 rounded-xl">
+        <button onclick="setEditType('income')" id="edit-t-inc" class="flex-1 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white">💰 Kirim</button>
+        <button onclick="setEditType('expense')" id="edit-t-exp" class="flex-1 py-2 text-sm font-medium rounded-lg text-slate-600">💸 Chiqim</button>
+      </div>
+      <input id="edit-amount" type="number" placeholder="Summa">
+      <select id="edit-cat"></select>
+      <input id="edit-date" type="date">
+      <input id="edit-note" type="text" placeholder="Izoh">
+      <input type="hidden" id="edit-id">
+      <div class="flex gap-3 mt-2">
+        <button onclick="closeModal('edit-modal')" class="btn btn-ghost flex-1">Bekor</button>
+        <button onclick="saveTx()" class="btn btn-primary flex-1">Saqlash</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TX MODAL -->
+<div id="add-modal" class="modal">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+    <div class="flex justify-between mb-5"><h3 class="font-bold text-lg">Yangi tranzaksiya</h3><button onclick="closeModal('add-modal')" class="text-xl text-slate-400">✕</button></div>
+    <div class="space-y-3">
+      <div class="flex gap-2 p-1 bg-slate-100 rounded-xl">
+        <button onclick="setAddType('income')" id="add-t-inc" class="flex-1 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white">💰 Kirim</button>
+        <button onclick="setAddType('expense')" id="add-t-exp" class="flex-1 py-2 text-sm font-medium rounded-lg text-slate-600">💸 Chiqim</button>
+      </div>
+      <input id="add-amount" type="number" placeholder="Summa">
+      <select id="add-cat"></select>
+      <input id="add-note" type="text" placeholder="Izoh">
+      <div class="flex gap-3 mt-2">
+        <button onclick="closeModal('add-modal')" class="btn btn-ghost flex-1">Bekor</button>
+        <button onclick="addTx()" class="btn btn-primary flex-1">Saqlash</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ADMIN MODAL -->
+<div id="admin-modal" class="modal">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+    <div class="flex justify-between mb-5"><h3 class="font-bold text-lg">Yangi admin qo'shish</h3><button onclick="closeModal('admin-modal')" class="text-xl text-slate-400">✕</button></div>
+    <div class="space-y-3">
+      <input id="a-uid" type="text" placeholder="Telegram ID (masalan: 123456789)">
+      <input id="a-name" type="text" placeholder="Ism">
+      <input id="a-uname" type="text" placeholder="Username (@username)">
+      <select id="a-role">
+        <option value="tx_only">1️⃣ Kirim/Chiqim ko'rish va qo'shish</option>
+        <option value="report_only">2️⃣ Faqat hisobot ko'rish</option>
+        <option value="full">3️⃣ To'liq huquq</option>
+      </select>
+      <input id="a-pass" type="password" placeholder="Web parol">
+      <div class="flex gap-3 mt-2">
+        <button onclick="closeModal('admin-modal')" class="btn btn-ghost flex-1">Bekor</button>
+        <button onclick="addAdmin()" class="btn btn-primary flex-1">Qo'shish</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';  // same origin
+let TOKEN = null, USER = null;
+let currentPeriod = 'month';
+let txOffset = 0, txHasMore = true;
+const PER_PAGE = 20;
+let charts = {};
+let addTxType = 'income', editTxType = 'income', qType = 'income';
+const COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899','#38bdf8'];
+const ROLE_LABELS = {super_admin:'👑 Super Admin', full:'3️⃣ To\'liq', report_only:'2️⃣ Hisobot', tx_only:'1️⃣ Kirim/Chiqim'};
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function loadAuth() {
+  const d = localStorage.getItem('fm_auth');
+  if (!d) return false;
+  const p = JSON.parse(d);
+  if (Date.now() > p.exp) { localStorage.removeItem('fm_auth'); return false; }
+  TOKEN = p.token; USER = p;
+  return true;
+}
+function saveAuth(data) {
+  const p = {...data, exp: Date.now() + 7*24*3600*1000};
+  localStorage.setItem('fm_auth', JSON.stringify(p));
+  TOKEN = p.token; USER = p;
+}
+function doLogout() { localStorage.removeItem('fm_auth'); location.reload(); }
+
+async function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const err  = document.getElementById('login-err');
+  err.classList.add('hidden');
+  try {
+    const r = await fetch('/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username:user,password:pass})});
+    if (!r.ok) { const e=await r.json(); err.textContent=e.detail||'Xatolik'; err.classList.remove('hidden'); return; }
+    const data = await r.json();
+    saveAuth(data);
+    initApp();
+  } catch(e) { err.textContent='Server bilan bog\'lanib bo\'lmadi'; err.classList.remove('hidden'); }
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(method, path, body=null) {
+  const opts = {method, headers:{'Content-Type':'application/json','Authorization':`Bearer ${TOKEN}`}};
+  if (body != null) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  if (r.status===401) { doLogout(); return null; }
+  if (!r.ok) throw new Error(await r.text());
+  if (r.status===204) return {};
+  return r.json();
+}
+
+// ── Formatting ────────────────────────────────────────────────────────────────
+function fmt(n) { return new Intl.NumberFormat('uz-UZ').format(Math.round(n||0)) + ' so\'m'; }
+function pct(c,p) { if(!p) return ''; const d=((c-p)/p*100).toFixed(1); return (d>0?'↑':d<0?'↓':'')+Math.abs(d)+'%'; }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initApp() {
+  document.getElementById('login-page').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+
+  // User info
+  document.getElementById('user-name').textContent = USER.name || 'Admin';
+  document.getElementById('user-role').textContent = ROLE_LABELS[USER.role] || USER.role;
+  document.getElementById('user-avatar').textContent = (USER.name||'A')[0].toUpperCase();
+
+  // Role-based nav
+  const role = USER.role;
+  const canAdd    = ['tx_only','full','super_admin'].includes(role);
+  const canReport = ['report_only','full','super_admin'].includes(role);
+  const canManage = ['full','super_admin'].includes(role);
+  const isSuper   = role === 'super_admin';
+
+  document.querySelectorAll('.nav-report').forEach(el => { if(!canReport) el.style.display='none'; });
+  document.querySelectorAll('.nav-manage').forEach(el => { if(!canManage) el.style.display='none'; });
+  document.querySelectorAll('.nav-addtx').forEach(el  => { if(canAdd) el.classList.remove('hidden'); });
+  if (isSuper) document.getElementById('nav-admins').style.display='flex';
+  if (!canManage) document.getElementById('quick-add-card').style.display='none';
+
+  loadCategories();
+  loadOverview();
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('nav-'+page).classList.add('active');
+
+  if (page==='overview')      loadOverview();
+  if (page==='transactions')  { txOffset=0; loadTxs(); loadAdminFilter(); }
+  if (page==='analytics')     loadAnalytics();
+  if (page==='categories')    loadCategories();
+  if (page==='admins')        loadAdmins();
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+function setPeriod(p) {
+  currentPeriod = p;
+  ['today','week','month','year'].forEach(x => {
+    const btn = document.getElementById('p-'+x);
+    btn.className = x===p ? 'px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 text-white' : 'px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50';
+  });
+  loadOverview();
+}
+
+async function loadOverview() {
+  try {
+    const [rep, txs] = await Promise.all([
+      api('GET',`/report?period=${currentPeriod}`),
+      api('GET','/transactions?limit=8')
+    ]);
+    if (!rep) return;
+
+    document.getElementById('stat-income').textContent  = fmt(rep.income);
+    document.getElementById('stat-expense').textContent = fmt(rep.expense);
+    document.getElementById('stat-net').textContent     = fmt(rep.net);
+    document.getElementById('prev-income').textContent  = 'O\'tgan davr: ' + fmt(rep.prev_income);
+    document.getElementById('prev-expense').textContent = 'O\'tgan davr: ' + fmt(rep.prev_expense);
+    document.getElementById('prev-net').textContent     = 'O\'tgan davr: ' + fmt(rep.prev_net);
+
+    const ip = pct(rep.income, rep.prev_income);
+    const ep = pct(rep.expense, rep.prev_expense);
+    const ipEl = document.getElementById('inc-pct');
+    const epEl = document.getElementById('exp-pct');
+    ipEl.textContent = ip; ipEl.className = `text-xs font-medium px-2 py-1 rounded-full ${rep.income>=rep.prev_income?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500'}`;
+    epEl.textContent = ep;
+
+    // Daily chart
+    const dailyMap = {};
+    (rep.daily||[]).forEach(d => {
+      if (!dailyMap[d.date]) dailyMap[d.date] = {income:0,expense:0};
+      dailyMap[d.date][d.type] += d.amount;
+    });
+    const labels = Object.keys(dailyMap);
+    const incData = labels.map(d => dailyMap[d].income);
+    const expData = labels.map(d => dailyMap[d].expense);
+
+    if (charts.daily) charts.daily.destroy();
+    const ctx = document.getElementById('chart-daily').getContext('2d');
+    charts.daily = new Chart(ctx, {
+      type:'bar',
+      data:{labels, datasets:[
+        {label:'Kirim', data:incData, backgroundColor:'#10b981', borderRadius:6},
+        {label:'Chiqim',data:expData, backgroundColor:'#ef4444', borderRadius:6},
+      ]},
+      options:{responsive:true, plugins:{legend:{position:'top'}}, scales:{y:{ticks:{callback:v=>(v/1000)+'K'}}}}
+    });
+
+    // Recent
+    const recent = document.getElementById('recent-list');
+    if (!txs || !txs.length) { recent.innerHTML='<p class="text-slate-400 text-sm text-center py-6">Tranzaksiyalar yo\'q</p>'; return; }
+    recent.innerHTML = txs.map(tx => `
+      <div class="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center text-sm ${tx.type==='income'?'bg-emerald-50':'bg-red-50'}">
+            ${tx.type==='income'?'💰':'💸'}
+          </div>
+          <div>
+            <p class="text-sm font-medium capitalize">${tx.category}</p>
+            <p class="text-xs text-slate-400">${tx.date}${tx.added_by_name?' · '+tx.added_by_name:''}</p>
+          </div>
+        </div>
+        <span class="font-semibold text-sm ${tx.type==='income'?'text-emerald-600':'text-red-500'}">
+          ${tx.type==='income'?'+':'-'}${fmt(tx.amount)}
+        </span>
+      </div>`).join('');
+  } catch(e) { showToast('Xatolik: '+e.message,'red'); }
+}
+
+// ── Quick add ─────────────────────────────────────────────────────────────────
+function setQType(t) {
+  qType = t;
+  document.getElementById('q-income').className  = `flex-1 py-1.5 text-sm font-medium rounded-lg transition-all ${t==='income'?'bg-emerald-500 text-white':'text-slate-600'}`;
+  document.getElementById('q-expense').className = `flex-1 py-1.5 text-sm font-medium rounded-lg transition-all ${t==='expense'?'bg-red-500 text-white':'text-slate-600'}`;
+  populateCatSelect('q-category', t);
+}
+async function quickAdd() {
+  const amount = parseFloat(document.getElementById('q-amount').value);
+  const cat    = document.getElementById('q-category').value;
+  const note   = document.getElementById('q-note').value;
+  if (!amount || !cat) return showToast('Summa va kategoriya kerak','red');
+  try {
+    await api('POST','/transactions',{type:qType,amount,category:cat,note,date:today(),added_by_id:USER.user_id||0,added_by_name:USER.name||''});
+    document.getElementById('q-amount').value=''; document.getElementById('q-note').value='';
+    showToast('✅ Saqlandi!');
+    loadOverview();
+  } catch(e) { showToast('Xatolik: '+e.message,'red'); }
+}
+
+// ── Transactions ──────────────────────────────────────────────────────────────
+async function loadTxs() {
+  const search   = document.getElementById('f-search').value;
+  const type     = document.getElementById('f-type').value;
+  const category = document.getElementById('f-cat').value;
+  const who      = document.getElementById('f-who').value;
+  const dateFrom = document.getElementById('f-from').value;
+  const dateTo   = document.getElementById('f-to').value;
+  const params   = new URLSearchParams({limit:PER_PAGE, offset:txOffset});
+  if (search)   params.set('search',search);
+  if (type)     params.set('type',type);
+  if (category) params.set('category',category);
+  if (who)      params.set('added_by_id',who);
+  if (dateFrom) params.set('date_from',dateFrom);
+  if (dateTo)   params.set('date_to',dateTo);
+
+  try {
+    const txs = await api('GET','/transactions?'+params);
+    if (!txs) return;
+    txHasMore = txs.length === PER_PAGE;
+
+    const totalInc = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const totalExp = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const sumEl = document.getElementById('tx-summary');
+    if (txs.length) {
+      sumEl.innerHTML = `💰 Kirim: <b>${fmt(totalInc)}</b> &nbsp; 💸 Chiqim: <b>${fmt(totalExp)}</b> &nbsp; Sof: <b>${fmt(totalInc-totalExp)}</b>`;
+      sumEl.classList.remove('hidden');
+    } else sumEl.classList.add('hidden');
+
+    document.getElementById('tx-count').textContent = txs.length + ' ta natija';
+    document.getElementById('tx-page-lbl').textContent = `${Math.floor(txOffset/PER_PAGE)+1}-sahifa`;
+    document.getElementById('btn-prev').disabled = txOffset===0;
+    document.getElementById('btn-next').disabled = !txHasMore;
+
+    const canManage = ['full','super_admin'].includes(USER.role);
+    const tbody = document.getElementById('tx-body');
+    if (!txs.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-400">Tranzaksiyalar topilmadi</td></tr>';
+      return;
+    }
+    tbody.innerHTML = txs.map(tx => `
+      <tr class="group">
+        <td><span class="badge ${tx.type==='income'?'badge-income':'badge-expense'}">${tx.type==='income'?'💰 Kirim':'💸 Chiqim'}</span></td>
+        <td><span class="font-semibold ${tx.type==='income'?'text-emerald-600':'text-red-500'}">${tx.type==='income'?'+':'-'}${fmt(tx.amount)}</span></td>
+        <td class="capitalize text-slate-700">${tx.category}</td>
+        <td class="text-slate-500">${tx.date}</td>
+        <td>${tx.added_by_name?`<span class="badge" style="background:#eef2ff;color:#4f46e5">👤 ${tx.added_by_name.split(' ')[0]}</span>`:'<span class="text-slate-300">—</span>'}</td>
+        <td class="text-slate-400 max-w-36 truncate">${tx.note||'—'}</td>
+        <td>
+          <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            ${canManage?`<button onclick="openEditModal(${tx.id})" class="btn btn-ghost py-1 px-2 text-xs">✏️</button>
+            <button onclick="deleteTx(${tx.id})" class="btn btn-danger py-1 px-2 text-xs">🗑</button>`:''}
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch(e) { showToast('Xatolik: '+e.message,'red'); }
+}
+
+function txPage(dir) {
+  const newOffset = txOffset + dir*PER_PAGE;
+  if (newOffset < 0 || (dir>0 && !txHasMore)) return;
+  txOffset = newOffset;
+  loadTxs();
+}
+
+function clearFilters() {
+  ['f-search','f-from','f-to'].forEach(id => document.getElementById(id).value='');
+  ['f-type','f-cat','f-who'].forEach(id => document.getElementById(id).value='');
+  txOffset=0; loadTxs();
+}
+
+async function loadAdminFilter() {
+  try {
+    const stats = await api('GET','/admin/stats');
+    const sel = document.getElementById('f-who');
+    sel.innerHTML = '<option value="">Barcha adminlar</option>';
+    (stats||[]).forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.added_by_id;
+      opt.textContent = s.added_by_name || s.added_by_id;
+      sel.appendChild(opt);
+    });
+  } catch(e){}
+}
+
+async function deleteTx(id) {
+  if (!confirm('O\'chirishni tasdiqlaysizmi?')) return;
+  try { await api('DELETE',`/transactions/${id}`); loadTxs(); showToast('O\'chirildi'); } catch(e) { showToast('Xatolik','red'); }
+}
+
+// ── Edit TX modal ─────────────────────────────────────────────────────────────
+async function openEditModal(id) {
+  const txs = await api('GET',`/transactions?limit=500`);
+  const tx = (txs||[]).find(t=>t.id===id);
+  if (!tx) return;
+  editTxType = tx.type;
+  document.getElementById('edit-id').value     = tx.id;
+  document.getElementById('edit-amount').value = tx.amount;
+  document.getElementById('edit-date').value   = tx.date;
+  document.getElementById('edit-note').value   = tx.note||'';
+  setEditType(tx.type);
+  await populateCatSelect('edit-cat', tx.type);
+  document.getElementById('edit-cat').value = tx.category;
+  openModal('edit-modal');
+}
+function setEditType(t) {
+  editTxType=t;
+  document.getElementById('edit-t-inc').className=`flex-1 py-2 text-sm font-medium rounded-lg ${t==='income'?'bg-emerald-500 text-white':'text-slate-600'}`;
+  document.getElementById('edit-t-exp').className=`flex-1 py-2 text-sm font-medium rounded-lg ${t==='expense'?'bg-red-500 text-white':'text-slate-600'}`;
+  populateCatSelect('edit-cat', t);
+}
+async function saveTx() {
+  const id=document.getElementById('edit-id').value;
+  const body={type:editTxType,amount:parseFloat(document.getElementById('edit-amount').value),category:document.getElementById('edit-cat').value,date:document.getElementById('edit-date').value,note:document.getElementById('edit-note').value};
+  try { await api('PUT',`/transactions/${id}`,body); closeModal('edit-modal'); loadTxs(); showToast('✅ Saqlandi!'); } catch(e){showToast('Xatolik','red');}
+}
+
+// ── Add TX modal ──────────────────────────────────────────────────────────────
+function openAddModal() { setAddType('income'); openModal('add-modal'); }
+function setAddType(t) {
+  addTxType=t;
+  document.getElementById('add-t-inc').className=`flex-1 py-2 text-sm font-medium rounded-lg ${t==='income'?'bg-emerald-500 text-white':'text-slate-600'}`;
+  document.getElementById('add-t-exp').className=`flex-1 py-2 text-sm font-medium rounded-lg ${t==='expense'?'bg-red-500 text-white':'text-slate-600'}`;
+  populateCatSelect('add-cat',t);
+}
+async function addTx() {
+  const body={type:addTxType,amount:parseFloat(document.getElementById('add-amount').value),category:document.getElementById('add-cat').value,note:document.getElementById('add-note').value,date:today(),added_by_id:USER.user_id||0,added_by_name:USER.name||''};
+  if (!body.amount||!body.category) return showToast('Summa va kategoriya kerak','red');
+  try { await api('POST','/transactions',body); closeModal('add-modal'); loadTxs(); showToast('✅ Saqlandi!'); } catch(e){showToast('Xatolik','red');}
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+async function loadAnalytics() {
+  try {
+    const data = await api('GET','/analytics');
+    if (!data) return;
+
+    if (charts.monthly) charts.monthly.destroy();
+    const mc = document.getElementById('chart-monthly').getContext('2d');
+    charts.monthly = new Chart(mc, {
+      type:'bar',
+      data:{labels:data.monthly.map(m=>m.month.slice(5)+'-oy'),
+        datasets:[
+          {label:'Kirim',data:data.monthly.map(m=>m.income),backgroundColor:'#10b981',borderRadius:6},
+          {label:'Chiqim',data:data.monthly.map(m=>m.expense),backgroundColor:'#ef4444',borderRadius:6},
+        ]},
+      options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{ticks:{callback:v=>(v/1000000).toFixed(1)+'M'}}}}
+    });
+
+    const drawPie = (canvasId, legendId, items) => {
+      if (charts[canvasId]) charts[canvasId].destroy();
+      const ctx2=document.getElementById(canvasId).getContext('2d');
+      charts[canvasId]=new Chart(ctx2,{type:'doughnut',
+        data:{labels:items.map(c=>c.category),datasets:[{data:items.map(c=>c.total),backgroundColor:COLORS,borderWidth:2,borderColor:'#fff'}]},
+        options:{responsive:true,plugins:{legend:{display:false}},cutout:'60%'}});
+      const total=items.reduce((s,c)=>s+c.total,0);
+      document.getElementById(legendId).innerHTML=items.slice(0,6).map((c,i)=>
+        `<div class="flex items-center justify-between text-sm">
+          <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full flex-shrink-0" style="background:${COLORS[i%COLORS.length]}"></div><span class="capitalize text-slate-600">${c.category}</span></div>
+          <span class="font-medium">${total?(c.total/total*100).toFixed(1):0}%</span>
+        </div>`).join('');
+    };
+    drawPie('chart-inc-pie','inc-legend',data.category_income);
+    drawPie('chart-exp-pie','exp-legend',data.category_expense);
+  } catch(e) { showToast('Xatolik: '+e.message,'red'); }
+}
+
+// ── Categories ────────────────────────────────────────────────────────────────
+let allCats = [];
+const CAT_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899'];
+let selectedColor = CAT_COLORS[0];
+
+async function loadCategories() {
+  try {
+    allCats = await api('GET','/categories') || [];
+
+    // Color picker
+    const cp = document.getElementById('color-picker');
+    if (cp) cp.innerHTML = CAT_COLORS.map(c=>`<button onclick="selectedColor='${c}';this.parentNode.querySelectorAll('button').forEach(b=>b.style.outline='');this.style.outline='3px solid #6366f1'" style="width:28px;height:28px;border-radius:8px;background:${c};border:none;cursor:pointer;${c===selectedColor?'outline:3px solid #6366f1':''}"></button>`).join('');
+
+    // Cat table
+    const tbody = document.getElementById('cat-body');
+    if (!tbody) return;
+    const canManage = ['full','super_admin'].includes(USER.role);
+    tbody.innerHTML = allCats.map(c=>`
+      <tr class="group">
+        <td><div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full" style="background:${c.color||'#6366f1'}"></div><span class="capitalize font-medium">${c.name}</span></div></td>
+        <td><span class="text-xs text-slate-500">{{${{'income':'💰 Kirim','expense':'💸 Chiqim','both':'🔄 Ikkalasi'}[c.type]||c.type}}}</span></td>
+        <td>${canManage?`<button onclick="deleteCategory('${c.name}')" class="btn btn-danger py-1 px-2 text-xs opacity-0 group-hover:opacity-100">🗑</button>`:''}
+        </td>
+      </tr>`).join('').replace(/\{\{(.*?)\}\}/g,(_,m)=>eval(m));
+
+    // Populate selects
+    populateCatSelect('q-category', qType);
+    populateCatSelect('add-cat', addTxType);
+    populateCatSelect('f-cat', '');
+
+    // Filter cat select
+    const fcat = document.getElementById('f-cat');
+    if (fcat) {
+      fcat.innerHTML = '<option value="">Barcha kategoriya</option>' + allCats.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+    }
+  } catch(e) { showToast('Xatolik: '+e.message,'red'); }
+}
+
+function populateCatSelect(id, type) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const filtered = type ? allCats.filter(c=>c.type===type||c.type==='both') : allCats;
+  sel.innerHTML = filtered.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+}
+
+async function addCategory() {
+  const name = document.getElementById('c-name').value.trim().toLowerCase();
+  const type = document.getElementById('c-type').value;
+  if (!name) return showToast('Nom kerak','red');
+  try {
+    await api('POST','/categories',{name,type,color:selectedColor});
+    document.getElementById('c-name').value='';
+    loadCategories(); showToast('✅ Kategoriya qo\'shildi!');
+  } catch(e) { showToast(e.message.includes('409')?'Bu kategoriya allaqachon bor':'Xatolik','red'); }
+}
+
+async function deleteCategory(name) {
+  if (!confirm(`"${name}" kategoriyasini o\'chirishni tasdiqlaysizmi?`)) return;
+  try { await api('DELETE',`/categories/${name}`); loadCategories(); showToast('O\'chirildi'); } catch(e) { showToast('Xatolik','red'); }
+}
+
+// ── Admins ────────────────────────────────────────────────────────────────────
+async function loadAdmins() {
+  try {
+    const [users, stats] = await Promise.all([api('GET','/users'), api('GET','/admin/stats')]);
+    const statsMap = {};
+    (stats||[]).forEach(s => statsMap[s.added_by_id] = s);
+
+    // Stats cards
+    const total_tx = (stats||[]).reduce((s,r)=>s+r.tx_count,0);
+    const total_inc= (stats||[]).reduce((s,r)=>s+r.income,0);
+    const total_exp= (stats||[]).reduce((s,r)=>s+r.expense,0);
+    document.getElementById('admin-stats-cards').innerHTML = `
+      <div class="card"><p class="text-2xl font-bold">${(users||[]).length}</p><p class="text-slate-500 text-sm mt-1">Jami adminlar</p></div>
+      <div class="card"><p class="text-2xl font-bold">${total_tx}</p><p class="text-slate-500 text-sm mt-1">Jami tranzaksiyalar</p></div>
+      <div class="card"><p class="text-2xl font-bold">${fmt(total_inc-total_exp)}</p><p class="text-slate-500 text-sm mt-1">Umumiy balans</p></div>`;
+
+    // Table
+    const tbody = document.getElementById('admin-body');
+    if (!users || !users.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">Adminlar yo\'q</td></tr>';
+      return;
+    }
+    tbody.innerHTML = users.map(u => {
+      const s = statsMap[u.user_id] || {};
+      const name = (u.full_name||u.username||'').trim() || `ID:${u.user_id}`;
+      const hasPass = u.web_password_hash ? '✅ Bor' : '❌ Yo\'q';
+      return `<tr class="group">
+        <td class="font-medium">${name}</td>
+        <td class="text-slate-500 font-mono text-xs">${u.user_id}</td>
+        <td><span class="badge" style="background:#eef2ff;color:#4f46e5">${ROLE_LABELS[u.role]||u.role}</span></td>
+        <td class="text-slate-500">${s.tx_count||0} ta</td>
+        <td class="text-slate-400 text-xs">${s.last_date||'—'}</td>
+        <td>
+          <span class="text-sm">${hasPass}</span>
+          <button onclick="setAdminPass(${u.user_id},'${name}')" class="btn btn-ghost py-1 px-2 text-xs ml-1">🔑</button>
+        </td>
+        <td>
+          <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <select onchange="changeAdminRole(${u.user_id},this.value)" class="text-xs border border-slate-200 rounded-lg px-1 py-1">
+              ${['tx_only','report_only','full'].map(r=>`<option value="${r}" ${r===u.role?'selected':''}>${ROLE_LABELS[r]}</option>`).join('')}
+            </select>
+            <button onclick="deleteAdmin(${u.user_id},'${name}')" class="btn btn-danger py-1 px-2 text-xs">🗑</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { showToast('Xatolik: '+e.message,'red'); }
+}
+
+function openAdminModal() {
+  ['a-uid','a-name','a-uname','a-pass'].forEach(id=>document.getElementById(id).value='');
+  openModal('admin-modal');
+}
+
+async function addAdmin() {
+  const uid  = document.getElementById('a-uid').value.trim();
+  const name = document.getElementById('a-name').value.trim();
+  const uname= document.getElementById('a-uname').value.trim();
+  const role = document.getElementById('a-role').value;
+  const pass = document.getElementById('a-pass').value;
+  if (!uid) return showToast('Telegram ID kerak','red');
+  try {
+    await api('POST','/users',{user_id:parseInt(uid),username:uname,full_name:name,role});
+    if (pass) await api('POST','/auth/set-password',{user_id:parseInt(uid),password:pass});
+    closeModal('admin-modal'); loadAdmins(); showToast('✅ Admin qo\'shildi!');
+  } catch(e) { showToast('Xatolik: '+e.message,'red'); }
+}
+
+async function changeAdminRole(uid, role) {
+  try {
+    const users = await api('GET','/users');
+    const u = (users||[]).find(x=>x.user_id===uid);
+    if (!u) return;
+    await api('POST','/users',{user_id:uid,username:u.username||'',full_name:u.full_name||'',role});
+    showToast('✅ Rol o\'zgartirildi!');
+    loadAdmins();
+  } catch(e) { showToast('Xatolik','red'); }
+}
+
+async function setAdminPass(uid, name) {
+  const pass = prompt(`"${name}" uchun yangi web parol:`);
+  if (!pass) return;
+  try { await api('POST','/auth/set-password',{user_id:uid,password:pass}); showToast('✅ Parol yangilandi!'); loadAdmins(); } catch(e){showToast('Xatolik','red');}
+}
+
+async function deleteAdmin(uid, name) {
+  if (!confirm(`"${name}" adminni o\'chirishni tasdiqlaysizmi?`)) return;
+  try { await api('DELETE',`/users/${uid}`); loadAdmins(); showToast('O\'chirildi'); } catch(e){showToast('Xatolik','red');}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function today() { return new Date().toISOString().slice(0,10); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showToast(msg, color='green') {
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className=`toast show ${color==='red'?'bg-red-500':'bg-emerald-600'} text-white`;
+  setTimeout(()=>t.className='toast',3000);
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+if (loadAuth()) {
+  initApp();
+} else {
+  document.getElementById('login-page').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+}
+</script>
+</body>
+</html>

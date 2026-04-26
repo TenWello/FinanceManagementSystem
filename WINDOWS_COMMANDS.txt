@@ -1,0 +1,38 @@
+# ============================================================
+# WINDOWS POWERSHELL - TO'G'RI BUYRUQLAR
+# ============================================================
+
+# 1. finance-bot papkasiga kiring
+cd D:\finance-bot
+
+# 2. Virtual muhit yarating (1 marta)
+python -m venv .venv
+
+# 3. Virtual muhitni YOQING
+.venv\Scripts\Activate.ps1
+# Agar xato bo'lsa:
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# 4. Paketlarni o'rnating
+pip install fastapi uvicorn python-telegram-bot httpx python-dotenv pydantic
+
+# ============================================================
+# TERMINAL 1 — BACKEND (shu terminalda)
+# ============================================================
+cd D:\finance-bot\backend
+uvicorn main:app --reload --port 8000
+
+# ============================================================
+# TERMINAL 2 — BOT (yangi terminal oching)
+# ============================================================
+cd D:\finance-bot
+.venv\Scripts\Activate.ps1
+cd bot
+python bot.py
+
+# ============================================================
+# TERMINAL 3 — FRONTEND (yana yangi terminal)
+# ============================================================
+cd D:\finance-bot\frontend
+npm install
+npm run dev
