@@ -1258,13 +1258,10 @@ async def handle_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     role = await guard(update)
     if not role: return ConversationHandler.END
     if not can_add_tx(role):
-        await update.message.reply_text("❌ Sizda kirim/chiqim qo\'shish huquqi yo\'q.")
+        await update.message.reply_text('❌ Sizda kirim/chiqim qo\'shish huquqi yo\'q.')
         return ST_MENU
-
-    uid  = update.effective_user.id
+    uid = update.effective_user.id
     user = update.effective_user
-
-    # Transcription sinash (Railway da ishlamaydi, skip qilinadi)
     transcribed = ""
     try:
         voice = update.message.voice
@@ -1278,23 +1275,45 @@ async def handle_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         except: pass
     except Exception as e:
         log.warning(f"Voice error: {e}")
-
-    # Transcription muvaffaqiyatli — to'g'ridan ishlov beramiz
     if transcribed:
-        result = await detect_intent_and_process(update.message, ctx, transcribed, role, uid, user)
-        if result is not None:
-            return result
-
-    # Transcription ishlamadi — summani so'raymiz
+        amount = extract_amount(transcribed)
+        if amount:
+            ctx.user_data["amount"] = amount
+            ctx.user_data.pop("tx_type", None)
+            text_l = transcribed.lower()
+            if any(w in text_l for w in INCOME_WORDS):
+                ctx.user_data["tx_type"] = "income"
+            elif any(w in text_l for w in EXPENSE_WORDS):
+                ctx.user_data["tx_type"] = "expense"
+            tx_type = ctx.user_data.get("tx_type")
+            if tx_type:
+                label = "💰 Kirim" if tx_type == "income" else "💸 Chiqim"
+                txt = "🎙 " + transcribed + "\n\n" + label + ": *" + fmt(amount) + "*\n\n📂 Kategoriyani tanlang:"
+                await update.message.reply_text(txt, parse_mode="Markdown", reply_markup=await cat_ikb(tx_type))
+                return ST_CATEGORY
+            else:
+                txt = "🎙 " + transcribed + "\n\n*" + fmt(amount) + "* — kirim yoki chiqim?"
+                await update.message.reply_text(txt, parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton(f"💰 Kirim ({fmt(amount)})", callback_data="add_income"),
+                         InlineKeyboardButton(f"💸 Chiqim ({fmt(amount)})", callback_data="add_expense")],
+                        [InlineKeyboardButton("❌ Bekor", callback_data="cancel")],
+                    ]))
+                return ST_CATEGORY
+        else:
+            txt = "🎙 " + transcribed + "\n\nSummani tushunmadim. Yozing:"
+            await update.message.reply_text(txt, parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ Bekor", callback_data="cancel")]]))
+            return ST_AMOUNT
     await update.message.reply_text(
-        "🎙 Ovoz qabul qilindi!\n\n"
-        "Avval summani yozing:",
+        "🎙 Summani yozing:\n\nMisol: `500000` | `1.5mln` | `200k`",
+        parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("💰 Kirim", callback_data="add_income"),
              InlineKeyboardButton("💸 Chiqim", callback_data="add_expense")],
             [InlineKeyboardButton("❌ Bekor", callback_data="cancel")],
         ]))
-    return ST_MENU
+    return ST_AMOUNT
 
 async def voice_text_fallback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """Voice yuborilgandan keyin foydalanuvchi matn yozsa"""
