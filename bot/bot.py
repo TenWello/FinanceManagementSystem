@@ -131,10 +131,20 @@ def parse_word_number(text: str):
 
 # ─── API ──────────────────────────────────────────────────────────────────────
 async def api(method, path, **kw):
-    async with httpx.AsyncClient() as c:
-        r = await getattr(c, method)(f"{API_URL}{path}", timeout=15, **kw)
-        r.raise_for_status()
-        return r.json()
+    try:
+        async with httpx.AsyncClient() as c:
+            r = await getattr(c, method)(f"{API_URL}{path}", timeout=20, **kw)
+            r.raise_for_status()
+            return r.json()
+    except httpx.ConnectError:
+        log.error(f"CONNECT ERROR: {API_URL}{path}")
+        raise Exception(f"Backend bilan ulanib bo'lmadi: {API_URL}")
+    except httpx.TimeoutException:
+        log.error(f"TIMEOUT: {API_URL}{path}")
+        raise Exception("Server javob bermadi (timeout)")
+    except Exception as e:
+        log.error(f"API ERROR {method.upper()} {path}: {e}")
+        raise
 
 async def get_cats(tx_type):
     try:
@@ -404,7 +414,9 @@ async def btn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         try:
             rep = await api("get", f"/report?period={period}")
             await q.edit_message_text(fmt_report(rep,period), parse_mode="Markdown", reply_markup=back_ikb(role))
-        except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+        except Exception as _e:
+            log.error(f"BTN ERROR: {_e}")
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
         return ST_MENU
 
     if d == "balance":
@@ -414,7 +426,9 @@ async def btn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await q.edit_message_text(
                 f"{'📈' if net>=0 else '📉'} *Bu oylik balans:*\n\n*{fmt(net)}*",
                 parse_mode="Markdown", reply_markup=back_ikb(role))
-        except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+        except Exception as _e:
+            log.error(f"BTN ERROR: {_e}")
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
         return ST_MENU
 
     if d == "list_last":
@@ -429,7 +443,9 @@ async def btn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 who = f" [{tx.get('added_by_name','?')}]" if tx.get("added_by_name") else ""
                 lines.append(f"{e} #{tx['id']} — {fmt(tx['amount'])} | {tx['category']} ({tx['date']}){who}")
             await q.edit_message_text("\n".join(lines), parse_mode="Markdown", reply_markup=back_ikb(role))
-        except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+        except Exception as _e:
+            log.error(f"BTN ERROR: {_e}")
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
         return ST_MENU
 
     # ── Export ──
@@ -569,7 +585,9 @@ async def btn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         try:
             await api("put", f"/transactions/{tx_id}", {**tx, "note": new_note, "amount": float(tx["amount"])})
             await q.edit_message_text(f"✅ Izoh tozalandi.", reply_markup=back_ikb(role))
-        except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+        except Exception as _e:
+            log.error(f"BTN ERROR: {_e}")
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
         return ST_MENU
 
     if d.startswith("deletetx_"):
@@ -577,7 +595,9 @@ async def btn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         try:
             await api("post", "/transactions/bulk-delete", json=[tx_id])
             await q.edit_message_text(f"🗑 #{tx_id} o'chirildi.", reply_markup=back_ikb(role))
-        except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+        except Exception as _e:
+            log.error(f"BTN ERROR: {_e}")
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
         return ST_MENU
 
         # ══════════════════════════════════════════════════════════════════════════
@@ -670,7 +690,9 @@ async def btn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         try:
             await api("delete", f"/categories/{cat_name}")
             await q.edit_message_text(f"✅ '{cat_name}' o'chirildi.", reply_markup=back_ikb(role))
-        except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+        except Exception as _e:
+            log.error(f"BTN ERROR: {_e}")
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
         return ST_MENU
 
     if d == "newcat":
@@ -687,7 +709,9 @@ async def btn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         try:
             await api("post","/categories",json={"name":name,"type":tx_type,"color":"#6366f1"})
             await q.edit_message_text(f"✅ '{name}' qo'shildi!", reply_markup=back_ikb(role))
-        except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+        except Exception as _e:
+            log.error(f"BTN ERROR: {_e}")
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
         ctx.user_data.clear(); ctx.user_data["role"]=role
         return ST_MENU
 
@@ -775,7 +799,10 @@ async def btn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 await q.edit_message_text(
                     f"✅ `{uid2}` qo'shildi\nRol: {role_label}",
                     parse_mode="Markdown", reply_markup=back_ikb(role))
-            except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+            except Exception as _e:
+                log.error(f"BTN ERROR: {_e}")
+                await q.edit_message_text(f"❌ Xatolik: {str(_e)[:80]}", reply_markup=back_ikb(role))
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
             ctx.user_data.pop("adding_user",None)
             ctx.user_data.pop("new_user_name",None)
             ctx.user_data.pop("new_user_id",None)
@@ -879,7 +906,9 @@ async def _show_edit_cats(q, role):
         rows.append([InlineKeyboardButton("🏠 Orqaga", callback_data="main_menu")])
         await q.edit_message_text("✏️ *Kategoriyani tanlang:*", parse_mode="Markdown",
                                   reply_markup=InlineKeyboardMarkup(rows))
-    except: await q.edit_message_text("❌ Xatolik.", reply_markup=back_ikb(role))
+    except Exception as _e:
+            log.error(f"BTN ERROR: {_e}")
+            await q.edit_message_text(f"❌ Xatolik: {str(_e)[:100]}", reply_markup=back_ikb(role))
     return ST_MENU
 
 # ─── Super admin users list ───────────────────────────────────────────────────
@@ -1759,7 +1788,7 @@ def main():
     app.add_handler(conv)
     app.add_handler(CommandHandler("myid", myid_cmd))
 
-    log.info("Bot ishga tushdi ✅")
+    log.info(f"Bot ishga tushdi ✅ | API_URL={API_URL} | SUPER_ADMIN={SUPER_ADMIN_ID}")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
