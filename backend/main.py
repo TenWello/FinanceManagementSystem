@@ -15,33 +15,7 @@ load_dotenv(_env_path)
 app = FastAPI(title="Finance Manager API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ─── SPA Middleware — brauzer so'rovlarini dashboard ga yo'naltirish ──────────
-# Faqat API yo'llari (bot ishlatadigan)
-_API_PREFIXES = (
-    "/auth/", "/transactions", "/report", "/analytics", "/categories",
-    "/users", "/export", "/import", "/health", "/admin",
-)
-
-@app.middleware("http")
-async def spa_middleware(request: Request, call_next):
-    """
-    Browser GET so'rovi → dashboard.html (login page ichida)
-    Bot/JS API so'rovi → oddiy JSON javob
-    """
-    if request.method == "GET":
-        accept = request.headers.get("accept", "")
-        path   = request.url.path
-        # Browser har doim "text/html" qabul qiladi
-        is_browser = "text/html" in accept
-        # Auth endpoint — har doim JSON
-        is_auth = path.startswith("/auth/") or path == "/health"
-        if is_browser and not is_auth:
-            # Browser orqali har qanday URL → dashboard.html ko'rsatamiz
-            # Dashboard JS o'zi /auth/me orqali tekshiradi, login ko'rsatadi
-            _dash = pathlib.Path(__file__).parent / "dashboard.html"
-            if _dash.exists():
-                return FileResponse(_dash)
-    return await call_next(request)
+# Dashboard faqat / da ochiladi
 
 DB_PATH         = os.getenv("DB_PATH", "/data/finance.db")
 SUPER_ADMIN_ID  = int(os.getenv("SUPER_ADMIN_ID", "0"))
@@ -435,6 +409,13 @@ def delete_category(cat_name:str):
     conn=get_db(); conn.execute("DELETE FROM categories WHERE name=?",(cat_name,))
     conn.commit(); conn.close(); return {"ok":True}
 
+@app.get("/")
+async def root():
+    _dash = pathlib.Path(__file__).parent / "dashboard.html"
+    if _dash.exists():
+        return FileResponse(str(_dash))
+    return {"status": "Finance Manager API - Dashboard yuklanmadi"}
+
 @app.get("/health")
 def health(): return {"status":"ok","time":datetime.now().isoformat()}
 
@@ -457,5 +438,3 @@ def setup_db_get():
     cat_count = conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
     conn.close()
     return {"ok": True, "categories": cat_count, "db_path": DB_PATH}
-
-
