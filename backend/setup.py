@@ -1,6 +1,10 @@
 import sqlite3, os
-db = os.getenv("DB_PATH", "finance.db")
+db = os.getenv("DB_PATH", "/data/finance.db")
 print(f"DB: {db}")
+
+# Create /data dir if not exists
+os.makedirs(os.path.dirname(db) if os.path.dirname(db) else ".", exist_ok=True)
+
 conn = sqlite3.connect(db)
 conn.executescript("""
 CREATE TABLE IF NOT EXISTS categories (
@@ -44,5 +48,7 @@ INSERT OR IGNORE INTO categories (name,type,color) VALUES
 """)
 conn.commit()
 count = conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
+tx_count = conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
 conn.close()
-print(f"Kategoriyalar: {count}")
+print(f"Kategoriyalar: {count}, Tranzaksiyalar: {tx_count}")
+print("Setup done!")

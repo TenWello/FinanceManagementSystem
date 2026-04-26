@@ -43,7 +43,7 @@ async def spa_middleware(request: Request, call_next):
                 return FileResponse(_dash)
     return await call_next(request)
 
-DB_PATH         = os.getenv("DB_PATH", "finance.db")
+DB_PATH         = os.getenv("DB_PATH", "/data/finance.db")
 SUPER_ADMIN_ID  = int(os.getenv("SUPER_ADMIN_ID", "0"))
 JWT_SECRET      = os.getenv("JWT_SECRET", "change-me-please-32chars-minimum!")
 SUPER_WEB_PASS  = os.getenv("SUPER_WEB_PASSWORD", "superadmin123")
@@ -437,6 +437,26 @@ def delete_category(cat_name:str):
 
 @app.get("/health")
 def health(): return {"status":"ok","time":datetime.now().isoformat()}
+
+@app.post("/setup")
+def setup_db():
+    """DB ni qayta ishga tushirish — kategoriyalarni seed qilish"""
+    init_db()
+    migrate_db()
+    conn = get_db()
+    cat_count = conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
+    conn.close()
+    return {"ok": True, "categories": cat_count, "db_path": DB_PATH}
+
+@app.get("/setup")
+def setup_db_get():
+    """GET orqali ham ishlaydi"""
+    init_db()
+    migrate_db()
+    conn = get_db()
+    cat_count = conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
+    conn.close()
+    return {"ok": True, "categories": cat_count, "db_path": DB_PATH}
 
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 # Middleware orqali barcha brauzer so'rovlari dashboard.html ga yo'naltiriladi.
