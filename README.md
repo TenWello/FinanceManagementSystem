@@ -1,204 +1,199 @@
 # 💰 Business Finance Manager
 
 > O'zbekistondagi kichik va o'rta bizneslar uchun moliyaviy boshqaruv tizimi.
-> Telegram bot + Web dashboard.
+> Telegram bot orqali ovoz va matn bilan tranzaksiya kiritish, web dashboard orqali tahlil va boshqaruv.
+
+🔗 **Live Demo:** https://financemanagementsystem-production.up.railway.app
+🤖 **Telegram Bot:** @your_bot_username
 
 ---
 
-## 🚀 Tezkor ishga tushirish (5 daqiqa)
+## 🌟 Imkoniyatlar
+
+### 🤖 Telegram Bot
+| Funksiya | Tavsif |
+|----------|--------|
+| 💰 Kirim / 💸 Chiqim | Matn va ovoz orqali (RU/EN/UZ) |
+| 📊 Hisobotlar | Bugun / hafta / oy / yil — kategoriya va foiz bilan |
+| ✏️ Tahrirlash | So'nggi 10 ta tranzaksiyani tahrirlash |
+| 🗑 O'chirish | Sana yoki ID bo'yicha |
+| 📤 Export | CSV fayl (Excel da ochiladi) |
+| 📥 Import | CSV fayl — ustiga yoki o'rniga |
+| 🔒 Kirish nazorati | Rol asosida — faqat ruxsat berilganlar |
+
+### 🌐 Web Dashboard
+| Sahifa | Tavsif |
+|--------|--------|
+| 🏠 Bosh sahifa | Statistika, grafik, tez qo'shish |
+| ↕️ Tranzaksiyalar | Filter, qidirish, tahrirlash, kim qo'shgani |
+| 📈 Tahlil | Oylik grafik, kategoriya taqsimoti |
+| 🏷️ Kategoriyalar | Qo'shish, o'chirish, rang tanlash |
+| 👑 Admin panel | Faqat super admin — adminlar boshqaruvi |
+
+---
+
+## 👥 Rol tizimi
+
+| Rol | Kirim/Chiqim | Hisobot | O'chirish/Import | Admin panel |
+|-----|:---:|:---:|:---:|:---:|
+| 👑 Super Admin | ✅ | ✅ | ✅ | ✅ |
+| 3️⃣ To'liq (full) | ✅ | ✅ | ✅ | ❌ |
+| 2️⃣ Hisobot (report_only) | ❌ | ✅ | ❌ | ❌ |
+| 1️⃣ Kirim/Chiqim (tx_only) | ✅ | ❌ | ❌ | ❌ |
+
+---
+
+## 🚀 O'rnatish
 
 ### Talablar
 - Python 3.10+
-- Node.js 18+
-- Telegram bot tokeni (@BotFather dan oling)
+- Telegram bot tokeni ([@BotFather](https://t.me/BotFather))
+- Telegram ID ([@userinfobot](https://t.me/userinfobot))
 
----
-
-## 1️⃣ Backend va Bot sozlash
-
+### 1. Loyihani yuklab olish
 ```bash
-# Reponi clone qiling
-git clone https://github.com/YOUR_USERNAME/finance-bot.git
-cd finance-bot
-
-# Virtual muhit yarating
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-
-# Kutubxonalarni o'rnating
-pip install -r requirements.txt
-
-# .env faylini yarating
-cp .env.example .env
-# .env faylini oching va BOT_TOKEN ni kiriting
+git clone https://github.com/TenWello/FinanceManagementSystem.git
+cd FinanceManagementSystem
 ```
 
-**`.env` faylini tahrirlang:**
+### 2. Virtual muhit va paketlar
+```bash
+python -m venv .venv
+
+# Windows
+.venv\Scripts\Activate.ps1
+
+# Linux/Mac
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### 3. .env fayli
+```bash
+cp .env.example .env
+```
+
+`.env` faylini tahrirlang:
 ```env
-BOT_TOKEN=7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+BOT_TOKEN=your_telegram_bot_token
 API_URL=http://localhost:8000
 DB_PATH=finance.db
+SUPER_ADMIN_ID=your_telegram_id
+JWT_SECRET=kamida-32-belgili-maxfiy-kalit
+SUPER_WEB_PASSWORD=your_password
 ```
 
-### Backend ishga tushirish (Terminal 1)
+### 4. Ishga tushirish
+
+**Terminal 1 — Backend:**
 ```bash
 cd backend
 uvicorn main:app --reload --port 8000
 ```
 
-API tayyor: http://localhost:8000/docs
-
-### Bot ishga tushirish (Terminal 2)
+**Terminal 2 — Bot:**
 ```bash
 cd bot
 python bot.py
 ```
 
----
-
-## 2️⃣ Frontend (Web Dashboard) sozlash
-
-```bash
-cd frontend
-
-# Dependencylarni o'rnating
-npm install
-
-# Development server
-npm run dev
-```
-
-Dashboard: http://localhost:3000
+**Dashboard:** http://localhost:8000
 
 ---
 
-## 🤖 Bot testlash
+## 🌐 Deploy (Railway.app)
 
-Telegram da botingizni toping va quyidagilarni yuboring:
+### Backend
+1. [railway.app](https://railway.app) → **New Project** → **GitHub** → repo
+2. Root Directory: `backend`
+3. Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. **Variables** qo'shing:
+```
+SUPER_ADMIN_ID      = your_telegram_id
+JWT_SECRET          = random_32_char_string
+SUPER_WEB_PASSWORD  = your_password
+DB_PATH             = /data/finance.db
+```
+5. **Volume** qo'shing: Mount Path `/data`
 
+### Bot
+1. Yangi Railway service → Root Directory: `bot`
+2. Start Command: `pip install -r requirements.txt && python bot.py`
+3. **Variables:**
 ```
-Sotuv 500 000 so'm tushdi
+BOT_TOKEN      = your_bot_token
+API_URL        = https://your-backend.up.railway.app
+SUPER_ADMIN_ID = your_telegram_id
 ```
-```
-Ijara uchun 2 000 000 to'ladik
-```
-```
-Bu oylik hisobot
-```
-```
-Bugungi balans qancha?
-```
-
-**Ovozli xabar:** Yuqoridagilarni ovozda ham yuboring! 🎙
 
 ---
 
-## 📁 Project tuzilmasi
+## 🤖 Bot — foydalanish
+
+### Matn orqali
+```
+500 000 tushdi          → 💰 Kirim: 500,000
+Ijara 2 mln to'ladik    → 💸 Chiqim: 2,000,000
+50000 received today    → 💰 Kirim: 50,000
+20 тысяч расход         → 💸 Chiqim: 20,000
+oylik hisobot           → 📊 Hisobot
+```
+
+### Admin qo'shish
+1. Bot: `⚙️ Admin panel` → `👥 Adminlar boshqaruvi` → `➕ Yangi admin`
+2. Telegram ID kiriting → Rol tanlang
+3. Web uchun parol: Dashboard → Adminlar → 🔑
+
+### Web login
+- **Super admin:** username = `superadmin`, parol = `.env` dagi `SUPER_WEB_PASSWORD`
+- **Boshqa adminlar:** username = Telegram ID, parol = super admin bergan parol
+
+---
+
+## 📁 Loyiha tuzilmasi
 
 ```
-finance-bot/
+FinanceManagementSystem/
 ├── backend/
-│   └── main.py          # FastAPI backend, SQLite DB
+│   ├── main.py           # FastAPI — barcha API endpointlar + auth
+│   ├── dashboard.html    # Web dashboard (SPA, npm kerak emas)
+│   ├── setup.py          # DB initialization script
+│   └── requirements.txt
 ├── bot/
-│   └── bot.py           # Telegram bot
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx       # Router + Sidebar
-│   │   ├── pages/
-│   │   │   ├── Overview.jsx      # Bosh sahifa
-│   │   │   ├── Transactions.jsx  # Tranzaksiyalar
-│   │   │   ├── Analytics.jsx     # Tahlil
-│   │   │   └── Categories.jsx    # Kategoriyalar
-│   ├── package.json
-│   └── vite.config.js
-├── requirements.txt
+│   ├── bot.py            # Telegram bot (python-telegram-bot)
+│   └── requirements.txt
+├── requirements.txt      # Umumiy paketlar
+├── nixpacks.toml         # Railway build config
+├── Procfile
+├── render.yaml           # Render.com deploy config
+├── .env.example
 └── README.md
 ```
 
 ---
 
-## 🌐 Deploy (Production)
+## 🛠 Texnologiyalar
 
-### Backend → Railway
-```bash
-# railway.toml
-[build]
-command = "pip install -r requirements.txt"
-
-[deploy]
-command = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
-```
-
-### Frontend → Vercel
-```bash
-cd frontend
-npm run build
-# vercel.json ga upload qiling
-```
-
-**Frontend `.env.production`:**
-```env
-VITE_API_URL=https://your-railway-app.up.railway.app
-```
-
-### Bot → Railway (yoki VPS)
-```bash
-# Alohida service sifatida
-python bot/bot.py
-```
+| Qism | Texnologiya |
+|------|-------------|
+| Bot | Python, python-telegram-bot 21.3 |
+| Backend | FastAPI, SQLite, uvicorn |
+| Frontend | Vanilla JS, Tailwind CSS CDN, Chart.js |
+| Auth | JWT (HMAC-SHA256, 7 kun) |
+| Deploy | Railway.app |
+| DB | SQLite + Volume (persistent) |
 
 ---
 
-## 💡 Bot imkoniyatlari
+## 📝 Mahsulot haqida
 
-| Buyruq | Natija |
-|--------|--------|
-| `500 000 tushdi` | Kirim qo'shadi (kategoria so'raydi) |
-| `Ijara 2 mln to'ladik` | Chiqim qayd etadi |
-| `Bu oylik hisobot` | Daromad/xarajat ko'rsatadi |
-| `Oxirgi tranzaksiyalar` | So'nggi 5 tasini ko'rsatadi |
-| `/ochir_42` | ID=42 tranzaksiyani o'chiradi |
-| `/balans` | Joriy oy balansi |
-| `/hisobot` | Oylik to'liq hisobot |
-| Ovozli xabar 🎙 | Avtomatik transkriptsiya |
+**Kim uchun:** O'zbekistondagi kichik va o'rta bizneslar — savdo do'konlari, xizmat ko'rsatuvchi kompaniyalar, restoran va kafeler.
+
+**Qanday muammo hal qiladi:** Kompaniya moliyasi WhatsApp, daftar va Excel orqali boshqariladi. Bir joyda ko'rish, tahlil qilish, jamoaviy boshqarish imkoni yo'q. Ushbu yechim Telegram bot orqali tez kiritish + web dashboard orqali to'liq nazoratni ta'minlaydi.
+
+**V2 rejasi:** Bank API integratsiyasi (Kapital Bank, Uzcard), byudjet rejalashtirish, avtomatik oylik PDF hisobot, AI asosida xarajat bashorati va anomaliyalarni aniqlash.
 
 ---
 
-## 📊 API Endpoints
-
-| Method | URL | Tavsif |
-|--------|-----|--------|
-| GET | `/transactions` | Tranzaksiyalar ro'yxati (filter bilan) |
-| POST | `/transactions` | Yangi tranzaksiya |
-| PUT | `/transactions/{id}` | Tahrirlash |
-| DELETE | `/transactions/{id}` | O'chirish |
-| GET | `/report?period=month` | Hisobot (today/week/month/year) |
-| GET | `/analytics` | Tahlil ma'lumotlari |
-| GET | `/categories` | Kategoriyalar |
-| POST | `/categories` | Yangi kategoriya |
-
----
-
-## 🎬 Demo oqimi
-
-1. Bot ga ovozli xabar yuboring: *"Bugün mijozdan ikki million so'm tushdi"*
-2. Bot avtomatik transkript qiladi va kirim sifatida saqlaydi
-3. Dashboard da (localhost:3000) real vaqtda ko'rinadi
-4. Analytics sahifasida kategoriya bo'yicha tahlil ko'rish mumkin
-
----
-
-## 📝 Mahsulot qisqacha
-
-**Kim uchun:** O'zbekistondagi kichik va o'rta bizneslar (do'konlar, xizmat ko'rsatuvchi kompaniyalar)
-
-**Qanday muammo hal qiladi:** WhatsApp, daftar va Excel o'rniga — bitta qulay joy: Telegram orqali tranzaksiya, dashboard orqali tahlil.
-
-**V2 nima bo'ladi:** Ko'p foydalanuvchi (ruxsat tizimi), bank API integratsiyasi, avtomatik oylik hisobot PDF, byudjet rejalashtirish.
-
-**3 kun yana bo'lsa nima qo'shardim:**
-Bank API (Kapital Bank, Uzcard) integratsiyasi — tranzaksiyalar avtomatik import bo'lsa, qo'lda kiritish zaruriyati yo'qoladi. Shuningdek, AI orqali oylik xarajat bashorati va "bu kategoriya o'tgan oyga nisbatan 30% oshdi" kabi smart alertlar qo'shardim.
-
----
-
-*Built with ❤️ for data365 agency assessment*
+*Built for data365 agency assessment · 2025*
