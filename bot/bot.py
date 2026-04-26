@@ -1264,9 +1264,7 @@ async def handle_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     uid  = update.effective_user.id
     user = update.effective_user
 
-    msg = await update.message.reply_text("🎙 Ovoz qabul qilindi, tahlil qilinmoqda...")
-
-    # Transcription sinash
+    # Transcription sinash (Railway da ishlamaydi, skip qilinadi)
     transcribed = ""
     try:
         voice = update.message.voice
@@ -1281,17 +1279,16 @@ async def handle_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         log.warning(f"Voice error: {e}")
 
-    # Transcription muvaffaqiyatli
+    # Transcription muvaffaqiyatli — to'g'ridan ishlov beramiz
     if transcribed:
-        await msg.edit_text(f"🎙 Eshitildi: _{transcribed}_", parse_mode="Markdown")
         result = await detect_intent_and_process(update.message, ctx, transcribed, role, uid, user)
         if result is not None:
             return result
 
-    # Transcription ishlamadi yoki tushunilmadi — kirim/chiqim tugmalar ko'rsat
-    await msg.edit_text(
+    # Transcription ishlamadi — summani so'raymiz
+    await update.message.reply_text(
         "🎙 Ovoz qabul qilindi!\n\n"
-        "Kirim yoki chiqim?",
+        "Avval summani yozing:",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("💰 Kirim", callback_data="add_income"),
              InlineKeyboardButton("💸 Chiqim", callback_data="add_expense")],
